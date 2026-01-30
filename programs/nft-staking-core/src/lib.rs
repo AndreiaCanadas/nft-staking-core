@@ -2,6 +2,7 @@ use anchor_lang::prelude::*;
 
 mod state;
 mod instructions;
+mod errors;
 use instructions::*;
 
 declare_id!("7WvxBTMfM9ySNJsp3qgzw2pKLjmVskmgUZECPkenG5uw");
@@ -10,11 +11,7 @@ declare_id!("7WvxBTMfM9ySNJsp3qgzw2pKLjmVskmgUZECPkenG5uw");
 pub mod nft_staking_core {
     use super::*;
 
-    pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
-        msg!("Greetings from: {:?}", ctx.program_id);
-        Ok(())
+    pub fn initialize_config(ctx: Context<Initialize>, points_per_stake: u8, freeze_period: u8) -> Result<()> {
+        ctx.accounts.init_config(points_per_stake, freeze_period, &ctx.bumps)
     }
 }
-
-#[derive(Accounts)]
-pub struct Initialize {}
