@@ -1,5 +1,5 @@
 use anchor_lang::prelude::*;
-// use anchor_spl::token_interface::{Mint, TokenInterface};
+use anchor_spl::token_interface::{Mint, TokenInterface};
 use crate::state::Config;
 
 #[derive(Accounts)]
@@ -14,17 +14,17 @@ pub struct Initialize<'info> {
         bump
     )]
     pub config: Account<'info, Config>,
-    // #[account(
-    //     init,
-    //     payer = authority,
-    //     mint::decimals = 6,
-    //     mint::authority = config,
-    //     seeds = [b"rewards", config.key().as_ref()],
-    //     bump
-    // )]
-    // pub rewards_mint: Account<'info, Mint>,
+    #[account(
+        init,
+        payer = authority,
+        mint::decimals = 6,
+        mint::authority = config,
+        seeds = [b"rewards", config.key().as_ref()],
+        bump
+    )]
+    pub rewards_mint: InterfaceAccount<'info, Mint>,
     pub system_program: Program<'info, System>,
-    // pub token_program: Interface<'info, TokenInterface>,
+    pub token_program: Interface<'info, TokenInterface>,
 }
 impl Initialize<'_> {
     pub fn init_config(&mut self, points_per_stake: u8, freeze_period: u8, bumps: &InitializeBumps) -> Result<()> {
