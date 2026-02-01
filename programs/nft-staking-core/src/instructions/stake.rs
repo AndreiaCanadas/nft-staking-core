@@ -1,5 +1,6 @@
 use anchor_lang::prelude::*;
 use mpl_core::{
+    ID as MPL_CORE_ID,
     accounts::{BaseAssetV1, BaseCollectionV1}, 
     fetch_plugin, 
     instructions::{AddPluginV1CpiBuilder, UpdatePluginV1CpiBuilder}, 
@@ -18,14 +19,14 @@ pub struct Stake<'info> {
         bump = config.config_bump
     )]
     pub config: Account<'info, Config>,
-    /// CHECK: This is the NFT account
+    /// CHECK: NFT account will be checked by the mpl core program
     #[account(mut)]
     pub nft: UncheckedAccount<'info>,
-    /// CHECK: This is the collection account
+    /// CHECK: Collection account will be checked by the mpl core program
     #[account(mut)]
     pub collection: UncheckedAccount<'info>,
     /// CHECK: This is the ID of the Metaplex Core program
-    #[account(address = mpl_core::ID)]
+    #[account(address = MPL_CORE_ID)]
     pub mpl_core_program: UncheckedAccount<'info>,
     pub system_program: Program<'info, System>,
 }
@@ -64,7 +65,7 @@ impl<'info> Stake<'info> {
                             ] 
                         }
                     ))
-                    .init_authority(PluginAuthority::UpdateAuthority)   // TODO: Check what this does
+                    .init_authority(PluginAuthority::UpdateAuthority)
                     .invoke()?;
             }
             Ok((_, fetched_attribute_list, _)) => {
@@ -91,6 +92,7 @@ impl<'info> Stake<'info> {
                     }
                 }
                 // Add the 'staked' and 'staked_at' attributes if they don't exist
+                // TBD: Check this logic after unstaking to ensure it makes sense!!
                 if !staked {
                     attribute_list.push(Attribute { 
                         key: "staked".to_string(), 
@@ -104,13 +106,13 @@ impl<'info> Stake<'info> {
                     });
                 }
                 UpdatePluginV1CpiBuilder::new(&self.mpl_core_program.to_account_info())
-                .asset(&self.nft.to_account_info())
-                .collection(Some(&self.collection.to_account_info()))
-                .payer(&self.user.to_account_info())
-                .authority(Some(&self.update_authority.to_account_info()))
-                .system_program(&self.system_program.to_account_info())
-                .plugin(Plugin::Attributes( Attributes { attribute_list }))
-                .invoke()?;
+                    .asset(&self.nft.to_account_info())
+                    .collection(Some(&self.collection.to_account_info()))
+                    .payer(&self.user.to_account_info())
+                    .authority(Some(&self.update_authority.to_account_info()))
+                    .system_program(&self.system_program.to_account_info())
+                    .plugin(Plugin::Attributes( Attributes { attribute_list }))
+                    .invoke()?;
             }
         }
 

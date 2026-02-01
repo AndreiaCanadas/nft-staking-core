@@ -1,6 +1,10 @@
+pub mod create_collection;
+pub mod mint_nft;
 pub mod init;
 pub mod stake;
 pub mod unstake;
+pub use create_collection::*;
+pub use mint_nft::*;
 pub use init::*;
 pub use stake::*;
 pub use unstake::*;
