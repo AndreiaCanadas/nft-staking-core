@@ -9,11 +9,19 @@ use mpl_core::{
 use crate::state::Config;
 use crate::errors::StakingError;
 
+// TBD: Verify authority, update authority and signer / signer_seeds through the whole program (collection, mint, stake).
+// TBD: Also, confirm init_authority plugin and what does that do
+
 #[derive(Accounts)]
 pub struct Stake<'info> {
     #[account(mut)]
     pub user: Signer<'info>,
-    pub update_authority: Signer<'info>,
+    /// CHECK: PDA Update authority of the program
+    #[account(
+        seeds = [b"update_authority", collection.key().as_ref()],
+        bump
+    )]
+    pub update_authority: UncheckedAccount<'info>,
     #[account(
         seeds = [b"config"],
         bump = config.config_bump
@@ -31,7 +39,7 @@ pub struct Stake<'info> {
     pub system_program: Program<'info, System>,
 }
 impl<'info> Stake<'info> {
-    pub fn stake(&mut self) -> Result<()> {
+    pub fn stake(&mut self, bumps: &StakeBumps) -> Result<()> {
         
         // TBD: Perform this validations in account constraints (currently BaseAssetV1 and BaseCollectionV1 are given errors)
         // Verify NFT owner and update authority
@@ -40,6 +48,14 @@ impl<'info> Stake<'info> {
         require!(base_asset.update_authority == UpdateAuthority::Collection(self.collection.key()), StakingError::InvalidAuthority);
         let base_collection = BaseCollectionV1::try_from(&self.collection.to_account_info())?;
         require!(base_collection.update_authority == self.update_authority.key(), StakingError::InvalidAuthority);
+
+        // Signer seeds for the update authority
+        let collection_key = self.collection.key();
+        let signer_seeds = &[
+            b"update_authority",
+            collection_key.as_ref(),
+            &[bumps.update_authority],
+        ];
 
         // Check if the NFT has the attribute plugin already added
         match fetch_plugin::<BaseAssetV1, Attributes>(&self.nft.to_account_info(), PluginType::Attributes) {
@@ -66,7 +82,7 @@ impl<'info> Stake<'info> {
                         }
                     ))
                     .init_authority(PluginAuthority::UpdateAuthority)
-                    .invoke()?;
+                    .invoke_signed(&[signer_seeds])?;
             }
             Ok((_, fetched_attribute_list, _)) => {
                 // Verify the fetched attribute list has the 'staked' and 'staked_at' attributes
@@ -112,7 +128,7 @@ impl<'info> Stake<'info> {
                     .authority(Some(&self.update_authority.to_account_info()))
                     .system_program(&self.system_program.to_account_info())
                     .plugin(Plugin::Attributes( Attributes { attribute_list }))
-                    .invoke()?;
+                    .invoke_signed(&[signer_seeds])?;
             }
         }
 

@@ -13,7 +13,7 @@ pub struct Mint<'info> {
     /// CHECK: Collection account will be checked by the mpl core program
     #[account(mut)]
     pub collection: UncheckedAccount<'info>,
-    /// CHECK: Update authority will be checked by the mpl core program
+    /// CHECK: PDA Update authority of the program
     #[account(
         seeds = [b"update_authority", collection.key().as_ref()],
         bump
@@ -27,7 +27,7 @@ pub struct Mint<'info> {
 impl<'info> Mint<'info> {
     pub fn mint_nft(&mut self, name: String, uri: String, bumps: &MintBumps) -> Result<()> {
 
-        // Signer seeds for the collection authority
+        // Signer seeds for the update authority
         let collection_key = self.collection.key();
         let signer_seeds = &[
             b"update_authority",
@@ -35,7 +35,6 @@ impl<'info> Mint<'info> {
             &[bumps.update_authority],
         ];
 
-        // TBD: Verify authority and update authority
         CreateV2CpiBuilder::new(&self.mpl_core_program.to_account_info())
             .asset(&self.nft.to_account_info())
             .collection(Some(&self.collection.to_account_info()))

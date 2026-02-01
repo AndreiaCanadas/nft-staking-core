@@ -10,7 +10,7 @@ pub struct CreateCollection<'info> {
     pub payer: Signer<'info>,
     #[account(mut)]
     pub collection: Signer<'info>,
-    /// CHECK: Update authority will be checked by the mpl core program
+    /// CHECK: PDA Update authority of the program
     #[account(
         seeds = [b"update_authority", collection.key().as_ref()],
         bump
