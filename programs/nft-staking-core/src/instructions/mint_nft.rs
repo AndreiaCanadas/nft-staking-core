@@ -41,7 +41,7 @@ impl<'info> Mint<'info> {
             .authority(Some(&self.update_authority.to_account_info()))
             .payer(&self.user.to_account_info())
             .owner(Some(&self.user.to_account_info()))
-            .update_authority(Some(&self.update_authority.to_account_info()))
+            .update_authority(None)
             .system_program(&self.system_program.to_account_info())
             .name(name)
             .uri(uri)
