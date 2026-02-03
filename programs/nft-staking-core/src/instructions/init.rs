@@ -32,7 +32,7 @@ impl Initialize<'_> {
             authority: self.authority.key(), 
             points_per_stake, 
             freeze_period, 
-            rewards_bump: 0, 
+            rewards_bump: bumps.rewards_mint, 
             config_bump: bumps.config });
         Ok(())
     }

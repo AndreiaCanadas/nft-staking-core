@@ -16,7 +16,7 @@ use crate::errors::StakingError;
 pub struct Stake<'info> {
     #[account(mut)]
     pub user: Signer<'info>,
-    /// CHECK: PDA Update authority of the program
+    /// CHECK: PDA Update authority
     #[account(
         seeds = [b"update_authority", collection.key().as_ref()],
         bump

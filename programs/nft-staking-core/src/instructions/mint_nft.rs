@@ -13,7 +13,7 @@ pub struct Mint<'info> {
     /// CHECK: Collection account will be checked by the mpl core program
     #[account(mut)]
     pub collection: UncheckedAccount<'info>,
-    /// CHECK: PDA Update authority of the program
+    /// CHECK: PDA Update authority
     #[account(
         seeds = [b"update_authority", collection.key().as_ref()],
         bump

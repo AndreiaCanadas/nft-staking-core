@@ -8,4 +8,10 @@ pub enum StakingError {
     InvalidAuthority,
     #[msg("NFT already staked")]
     AlreadyStaked,
+    #[msg("NFT not staked")]
+    NotStaked,
+    #[msg("Invalid timestamp value")]
+    InvalidTimestamp,
+    #[msg("NFT freeze period not elapsed")]
+    FreezePeriodNotElapsed,
 }

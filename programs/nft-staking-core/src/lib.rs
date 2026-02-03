@@ -5,7 +5,7 @@ mod instructions;
 mod errors;
 use instructions::*;
 
-declare_id!("7WvxBTMfM9ySNJsp3qgzw2pKLjmVskmgUZECPkenG5uw");
+declare_id!("72Zim5YCQs4goV9mhSAJJwGL4ELgNjjmkKxWC3dSmgGZ");
 
 #[program]
 pub mod nft_staking_core {
@@ -25,6 +25,10 @@ pub mod nft_staking_core {
 
     pub fn stake(ctx: Context<Stake>) -> Result<()> {
         ctx.accounts.stake(&ctx.bumps)
+    }
+
+    pub fn unstake(ctx: Context<Unstake>) -> Result<()> {
+        ctx.accounts.unstake(&ctx.bumps)
     }
 
 }
