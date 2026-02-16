@@ -23,7 +23,7 @@ pub struct Stake<'info> {
     )]
     pub update_authority: UncheckedAccount<'info>,
     #[account(
-        seeds = [b"config"],
+        seeds = [b"config", collection.key().as_ref()],
         bump = config.config_bump
     )]
     pub config: Account<'info, Config>,
@@ -57,6 +57,9 @@ impl<'info> Stake<'info> {
             &[bumps.update_authority],
         ];
 
+        // Get the current time
+        let current_time = Clock::get()?.unix_timestamp;
+
         // Check if the NFT has the attribute plugin already added
         match fetch_plugin::<BaseAssetV1, Attributes>(&self.nft.to_account_info(), PluginType::Attributes) {
             Err(_) => {
@@ -76,7 +79,7 @@ impl<'info> Stake<'info> {
                                 },
                                 Attribute { 
                                     key: "staked_at".to_string(), 
-                                    value: Clock::get()?.unix_timestamp.to_string() 
+                                    value: current_time.to_string() 
                                 },
                             ] 
                         }
@@ -100,7 +103,7 @@ impl<'info> Stake<'info> {
                     }else if attribute.key == "staked_at" {
                         attribute_list.push(Attribute { 
                             key: "staked_at".to_string(), 
-                            value: Clock::get()?.unix_timestamp.to_string() 
+                            value: current_time.to_string() 
                         });
                         staked_at = true;
                     }else {
@@ -118,7 +121,7 @@ impl<'info> Stake<'info> {
                 if !staked_at {
                     attribute_list.push(Attribute { 
                         key: "staked_at".to_string(), 
-                        value: Clock::get()?.unix_timestamp.to_string() 
+                        value: current_time.to_string() 
                     });
                 }
                 UpdatePluginV1CpiBuilder::new(&self.mpl_core_program.to_account_info())
@@ -132,16 +135,32 @@ impl<'info> Stake<'info> {
             }
         }
 
-        // Freeze the NFT
-        AddPluginV1CpiBuilder::new(&self.mpl_core_program.to_account_info())
-            .asset(&self.nft.to_account_info())
-            .collection(Some(&self.collection.to_account_info()))
-            .payer(&self.user.to_account_info())
-            .authority(Some(&self.user.to_account_info()))
-            .system_program(&self.system_program.to_account_info())
-            .plugin(Plugin::FreezeDelegate(FreezeDelegate { frozen: true }))
-            .init_authority(PluginAuthority::UpdateAuthority)
-            .invoke()?;
+        // Freeze the NFT (check if FreezeDelegate already exists from a previous stake)
+        match fetch_plugin::<BaseAssetV1, FreezeDelegate>(&self.nft.to_account_info(), PluginType::FreezeDelegate) {
+            Err(_) => {
+                // First time staking — add FreezeDelegate plugin
+                AddPluginV1CpiBuilder::new(&self.mpl_core_program.to_account_info())
+                    .asset(&self.nft.to_account_info())
+                    .collection(Some(&self.collection.to_account_info()))
+                    .payer(&self.user.to_account_info())
+                    .authority(Some(&self.user.to_account_info()))
+                    .system_program(&self.system_program.to_account_info())
+                    .plugin(Plugin::FreezeDelegate(FreezeDelegate { frozen: true }))
+                    .init_authority(PluginAuthority::UpdateAuthority)
+                    .invoke()?;
+            }
+            Ok(_) => {
+                // Re-staking — FreezeDelegate exists from a previous unstake, just re-freeze
+                UpdatePluginV1CpiBuilder::new(&self.mpl_core_program.to_account_info())
+                    .asset(&self.nft.to_account_info())
+                    .collection(Some(&self.collection.to_account_info()))
+                    .payer(&self.user.to_account_info())
+                    .authority(Some(&self.update_authority.to_account_info()))
+                    .system_program(&self.system_program.to_account_info())
+                    .plugin(Plugin::FreezeDelegate(FreezeDelegate { frozen: true }))
+                    .invoke_signed(&[signer_seeds])?;
+            }
+        }
 
         Ok(())
     }

@@ -4,7 +4,7 @@ use mpl_core::{
     ID as MPL_CORE_ID,
     accounts::{BaseAssetV1, BaseCollectionV1}, 
     fetch_plugin, 
-    instructions::UpdatePluginV1CpiBuilder, 
+    instructions::UpdatePluginV1CpiBuilder,
     types::{Attribute, Attributes, FreezeDelegate, Plugin, PluginType, UpdateAuthority}
 };
 use crate::state::Config;
@@ -24,7 +24,7 @@ pub struct Unstake<'info> {
     )]
     pub update_authority: UncheckedAccount<'info>,
     #[account(
-        seeds = [b"config"],
+        seeds = [b"config", collection.key().as_ref()],
         bump = config.config_bump
     )]
     pub config: Account<'info, Config>,
@@ -150,21 +150,15 @@ impl<'info> Unstake<'info> {
             .plugin(Plugin::FreezeDelegate(FreezeDelegate { frozen: false }))
             .invoke_signed(&[signer_seeds])?;
 
-        // Remove the FreezeDelegate plugin
-
-
         // Calculate rewards to the user
-        let points_multiplier = 10_u64
-            .checked_pow(self.config.points_per_stake as u32)
-            .ok_or(StakingError::InvalidTimestamp)?;
-        
         let amount = (staked_time_days as u64)
-            .checked_mul(points_multiplier)
-            .ok_or(StakingError::InvalidTimestamp)?;
+            .checked_mul(self.config.points_per_stake as u64)
+            .ok_or(StakingError::Overflow)?;
 
         // Prepare signer seeds for config PDA
         let config_seeds = &[
-            b"config".as_ref(),
+            b"config",
+            collection_key.as_ref(),
             &[self.config.config_bump],
         ];
         let config_signer_seeds = &[&config_seeds[..]];

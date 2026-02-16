@@ -6,7 +6,7 @@ import { MPL_CORE_PROGRAM_ID } from "@metaplex-foundation/mpl-core";
 import { ASSOCIATED_TOKEN_PROGRAM_ID, getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 
 const MILLISECONDS_PER_DAY = 86400000;
-const POINTS_PER_STAKED_NFT_PER_DAY = 10;
+const POINTS_PER_STAKED_NFT_PER_DAY = 10_000_000;
 const FREEZE_PERIOD_IN_DAYS = 7;
 const TIME_TRAVEL_IN_DAYS = 8;
 
@@ -31,7 +31,7 @@ describe("nft-staking-core", () => {
 
   // Find the config account (PDA)
   const config = anchor.web3.PublicKey.findProgramAddressSync(
-    [Buffer.from("config")],
+    [Buffer.from("config"), collectionKeypair.publicKey.toBuffer()],
     program.programId
   )[0];
 
@@ -79,7 +79,9 @@ describe("nft-staking-core", () => {
   it("Initialize stake config", async () => {
     const tx = await program.methods.initializeConfig(POINTS_PER_STAKED_NFT_PER_DAY, FREEZE_PERIOD_IN_DAYS)
     .accountsPartial({
-      authority: provider.wallet.publicKey,
+      admin: provider.wallet.publicKey,
+      collection: collectionKeypair.publicKey,
+      updateAuthority,
       config,
       rewardsMint,
       systemProgram: SystemProgram.programId,

@@ -14,4 +14,6 @@ pub enum StakingError {
     InvalidTimestamp,
     #[msg("NFT freeze period not elapsed")]
     FreezePeriodNotElapsed,
+    #[msg("Overflow")]
+    Overflow,
 }
