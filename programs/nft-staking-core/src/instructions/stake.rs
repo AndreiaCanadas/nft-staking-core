@@ -9,9 +9,6 @@ use mpl_core::{
 use crate::state::Config;
 use crate::errors::StakingError;
 
-// TBD: Verify authority, update authority and signer / signer_seeds through the whole program (collection, mint, stake).
-// TBD: Also, confirm init_authority plugin and what does that do
-
 #[derive(Accounts)]
 pub struct Stake<'info> {
     #[account(mut)]
@@ -41,7 +38,6 @@ pub struct Stake<'info> {
 impl<'info> Stake<'info> {
     pub fn stake(&mut self, bumps: &StakeBumps) -> Result<()> {
         
-        // TBD: Perform this validations in account constraints (currently BaseAssetV1 and BaseCollectionV1 are given errors)
         // Verify NFT owner and update authority
         let base_asset = BaseAssetV1::try_from(&self.nft.to_account_info())?;
         require!(base_asset.owner == self.user.key(), StakingError::InvalidOwner);
@@ -63,7 +59,7 @@ impl<'info> Stake<'info> {
         // Check if the NFT has the attribute plugin already added
         match fetch_plugin::<BaseAssetV1, Attributes>(&self.nft.to_account_info(), PluginType::Attributes) {
             Err(_) => {
-                // Add the attribute plugin to the NFT if it doesn't have it yet ('staked' and 'staked_at' attributes)
+                // Add the attribute plugin to the NFT if it doesn't have it yet
                 AddPluginV1CpiBuilder::new(&self.mpl_core_program.to_account_info())
                     .asset(&self.nft.to_account_info())
                     .collection(Some(&self.collection.to_account_info()))
@@ -81,6 +77,10 @@ impl<'info> Stake<'info> {
                                     key: "staked_at".to_string(), 
                                     value: current_time.to_string() 
                                 },
+                                Attribute { 
+                                    key: "last_claimed_at".to_string(), 
+                                    value: "0".to_string() 
+                                },
                             ] 
                         }
                     ))
@@ -88,10 +88,12 @@ impl<'info> Stake<'info> {
                     .invoke_signed(&[signer_seeds])?;
             }
             Ok((_, fetched_attribute_list, _)) => {
-                // Verify the fetched attribute list has the 'staked' and 'staked_at' attributes
+                // Verify the fetched attribute list and update staking attributes
                 let mut attribute_list: Vec<Attribute> = Vec::new();
                 let mut staked = false;
                 let mut staked_at = false;
+                let mut last_claimed_at = false;
+                
                 for attribute in fetched_attribute_list.attribute_list {
                     if attribute.key == "staked" {
                         require!(attribute.value == "false", StakingError::AlreadyStaked);
@@ -100,18 +102,24 @@ impl<'info> Stake<'info> {
                             value: "true".to_string() 
                         });
                         staked = true;
-                    }else if attribute.key == "staked_at" {
+                    } else if attribute.key == "staked_at" {
                         attribute_list.push(Attribute { 
                             key: "staked_at".to_string(), 
                             value: current_time.to_string() 
                         });
                         staked_at = true;
-                    }else {
+                    } else if attribute.key == "last_claimed_at" {
+                        attribute_list.push(Attribute { 
+                            key: "last_claimed_at".to_string(), 
+                            value: "0".to_string() 
+                        });
+                        last_claimed_at = true;
+                    } else {
                         attribute_list.push(attribute);
                     }
                 }
-                // Add the 'staked' and 'staked_at' attributes if they don't exist
-                // TBD: Check this logic after unstaking to ensure it makes sense!!
+                
+                // Add missing attributes if they don't exist
                 if !staked {
                     attribute_list.push(Attribute { 
                         key: "staked".to_string(), 
@@ -124,6 +132,13 @@ impl<'info> Stake<'info> {
                         value: current_time.to_string() 
                     });
                 }
+                if !last_claimed_at {
+                    attribute_list.push(Attribute { 
+                        key: "last_claimed_at".to_string(), 
+                        value: "0".to_string() 
+                    });
+                }
+                
                 UpdatePluginV1CpiBuilder::new(&self.mpl_core_program.to_account_info())
                     .asset(&self.nft.to_account_info())
                     .collection(Some(&self.collection.to_account_info()))

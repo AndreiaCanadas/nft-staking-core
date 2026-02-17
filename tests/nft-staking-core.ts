@@ -4,6 +4,7 @@ import { NftStakingCore } from "../target/types/nft_staking_core";
 import { SystemProgram } from "@solana/web3.js";
 import { MPL_CORE_PROGRAM_ID } from "@metaplex-foundation/mpl-core";
 import { ASSOCIATED_TOKEN_PROGRAM_ID, getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import { assert } from "chai";
 
 const MILLISECONDS_PER_DAY = 86400000;
 const POINTS_PER_STAKED_NFT_PER_DAY = 10_000_000;
@@ -134,6 +135,27 @@ describe("nft-staking-core", () => {
     await new Promise((resolve) => setTimeout(resolve, 1000));
   }
 
+  it("Attempt to unstake before freezing period", async () => {
+    try {
+      await program.methods.unstake()
+        .accountsPartial({
+          user: provider.wallet.publicKey,
+          updateAuthority,
+          config,
+          nft: nftKeypair.publicKey,
+          collection: collectionKeypair.publicKey,
+          mplCoreProgram: MPL_CORE_PROGRAM_ID,
+          systemProgram: SystemProgram.programId,
+        })
+        .rpc();
+      // If we reach here, the test should fail because we expected an error
+      throw new Error("Expected transaction to fail, but it succeeded");
+    } catch (error) {
+      assert.include(error.toString(), "NFT freeze period not elapsed");
+      console.log("Transaction failed as expected: NFT freeze period not elapsed");
+    }
+  });
+
   it("Time travel to the future", async () => {
     // Advance time in milliseconds
     const currentTimestamp = Date.now();
@@ -141,26 +163,41 @@ describe("nft-staking-core", () => {
     console.log("\nTime traveled in days", TIME_TRAVEL_IN_DAYS)
   });
 
-  it("Unstake an NFT", async () => {
+  it("Claim rewards", async () => {
     // Get the user rewards ATA account
     const userRewardsAta = getAssociatedTokenAddressSync(rewardsMint, provider.wallet.publicKey, false, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID);
-    const tx = await program.methods.unstake()
+    const tx = await program.methods.claimRewards()
     .accountsPartial({
       user: provider.wallet.publicKey,
-      updateAuthority,
       config,
       rewardsMint,
       userRewardsAta,
+      updateAuthority,
       nft: nftKeypair.publicKey,
       collection: collectionKeypair.publicKey,
-      mplCoreProgram: MPL_CORE_PROGRAM_ID,
       systemProgram: SystemProgram.programId,
+      mplCoreProgram: MPL_CORE_PROGRAM_ID,
       tokenProgram: TOKEN_PROGRAM_ID,
       associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
     })
     .rpc();
     console.log("\nYour transaction signature", tx);
     console.log("User rewards balance", (await provider.connection.getTokenAccountBalance(userRewardsAta)).value.uiAmount);
+  });
+
+  it("Unstake an NFT", async () => {
+    const tx = await program.methods.unstake()
+    .accountsPartial({
+      user: provider.wallet.publicKey,
+      updateAuthority,
+      config,
+      nft: nftKeypair.publicKey,
+      collection: collectionKeypair.publicKey,
+      mplCoreProgram: MPL_CORE_PROGRAM_ID,
+      systemProgram: SystemProgram.programId,
+    })
+    .rpc();
+    console.log("\nYour transaction signature", tx);
   });
 
 
