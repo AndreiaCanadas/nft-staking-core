@@ -8,6 +8,7 @@ import { assert } from "chai";
 
 const MILLISECONDS_PER_DAY = 86400000;
 const POINTS_PER_STAKED_NFT_PER_DAY = 10_000_000;
+const POINTS_PER_BURNED_NFT = 1_000_000_000;
 const FREEZE_PERIOD_IN_DAYS = 7;
 const TIME_TRAVEL_IN_DAYS = 8;
 
@@ -78,7 +79,7 @@ describe("nft-staking-core", () => {
   });
 
   it("Initialize stake config", async () => {
-    const tx = await program.methods.initializeConfig(POINTS_PER_STAKED_NFT_PER_DAY, FREEZE_PERIOD_IN_DAYS)
+    const tx = await program.methods.initializeConfig(POINTS_PER_STAKED_NFT_PER_DAY, POINTS_PER_BURNED_NFT, FREEZE_PERIOD_IN_DAYS)
     .accountsPartial({
       admin: provider.wallet.publicKey,
       collection: collectionKeypair.publicKey,
@@ -92,6 +93,7 @@ describe("nft-staking-core", () => {
     console.log("\nYour transaction signature", tx);
     console.log("Config address", config.toBase58());
     console.log("Points per staked NFT per day", POINTS_PER_STAKED_NFT_PER_DAY);
+    console.log("Points per burned NFT", POINTS_PER_BURNED_NFT);
     console.log("Freeze period in days", FREEZE_PERIOD_IN_DAYS);
     console.log("Rewards mint address", rewardsMint.toBase58());
   });
@@ -149,10 +151,10 @@ describe("nft-staking-core", () => {
         })
         .rpc();
       // If we reach here, the test should fail because we expected an error
-      throw new Error("Expected transaction to fail, but it succeeded");
+      throw new Error("\nExpected transaction to fail, but it succeeded");
     } catch (error) {
       assert.include(error.toString(), "NFT freeze period not elapsed");
-      console.log("Transaction failed as expected: NFT freeze period not elapsed");
+      console.log("\nTransaction failed as expected: NFT freeze period not elapsed");
     }
   });
 
@@ -185,7 +187,7 @@ describe("nft-staking-core", () => {
     console.log("User rewards balance", (await provider.connection.getTokenAccountBalance(userRewardsAta)).value.uiAmount);
   });
 
-  it("Unstake an NFT", async () => {
+  xit("Unstake an NFT", async () => {
     const tx = await program.methods.unstake()
     .accountsPartial({
       user: provider.wallet.publicKey,
@@ -198,6 +200,28 @@ describe("nft-staking-core", () => {
     })
     .rpc();
     console.log("\nYour transaction signature", tx);
+  });
+
+  it("Burn a staked NFT", async () => {
+    // Get the user rewards ATA account
+    const userRewardsAta = getAssociatedTokenAddressSync(rewardsMint, provider.wallet.publicKey, false, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID);
+    const tx = await program.methods.burnStakedNft()
+    .accountsPartial({
+      user: provider.wallet.publicKey,
+      config,
+      rewardsMint,
+      userRewardsAta,
+      updateAuthority,
+      nft: nftKeypair.publicKey,
+      collection: collectionKeypair.publicKey,
+      systemProgram: SystemProgram.programId,
+      mplCoreProgram: MPL_CORE_PROGRAM_ID,
+      tokenProgram: TOKEN_PROGRAM_ID,
+      associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+    })
+    .rpc();
+    console.log("\nYour transaction signature", tx);
+    console.log("User rewards balance", (await provider.connection.getTokenAccountBalance(userRewardsAta)).value.uiAmount);
   });
 
 

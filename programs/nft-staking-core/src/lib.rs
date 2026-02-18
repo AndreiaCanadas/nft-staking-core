@@ -19,8 +19,8 @@ pub mod nft_staking_core {
         ctx.accounts.mint_nft(name, uri, &ctx.bumps)
     }
 
-    pub fn initialize_config(ctx: Context<InitConfig>, points_per_stake: u32, freeze_period: u8) -> Result<()> {
-        ctx.accounts.init_config(points_per_stake, freeze_period, &ctx.bumps)
+    pub fn initialize_config(ctx: Context<InitConfig>, points_per_stake: u32, points_per_burn: u32, freeze_period: u8) -> Result<()> {
+        ctx.accounts.init_config(points_per_stake, points_per_burn, freeze_period, &ctx.bumps)
     }
 
     pub fn stake(ctx: Context<Stake>) -> Result<()> {
@@ -33,6 +33,10 @@ pub mod nft_staking_core {
 
     pub fn claim_rewards(ctx: Context<ClaimRewards>) -> Result<()> {
         ctx.accounts.claim_rewards(&ctx.bumps)
+    }
+
+    pub fn burn_staked_nft(ctx: Context<BurnStakedNft>) -> Result<()> {
+        ctx.accounts.burn_staked_nft(&ctx.bumps)
     }
 
 }
