@@ -16,6 +16,10 @@ pub enum StakingError {
     FreezePeriodNotElapsed,
     #[msg("No rewards to claim")]
     NoRewardsToClaim,
+    #[msg("Underflow")]
+    Underflow,
     #[msg("Overflow")]
     Overflow,
+    #[msg("Invalid collection stats")]
+    InvalidCollectionStats,
 }

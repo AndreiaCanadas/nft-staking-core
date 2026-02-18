@@ -20,8 +20,8 @@ Create a `claim_rewards` instruction that lets users collect accumulated rewards
 Create a `burn_staked_nft` instruction that lets users permanently burn their staked NFT for a massive one-time reward bonus.
 
 **Requirements:**
-- Award a large bonus (e.g., 10x the normal accumulated reward) for destroying the NFT
-- Must handle the plugin lifecycle correctly
+- Mint reward tokens to the user's ATA
+- Burn the NFT
 
 
 ### 3. Collection-Level Staking Stats (Attributes on Collection)

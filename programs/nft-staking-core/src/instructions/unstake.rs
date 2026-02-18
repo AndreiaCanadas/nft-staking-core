@@ -3,7 +3,7 @@ use mpl_core::{
     ID as MPL_CORE_ID,
     accounts::{BaseAssetV1, BaseCollectionV1}, 
     fetch_plugin, 
-    instructions::UpdatePluginV1CpiBuilder,
+    instructions::{UpdatePluginV1CpiBuilder, UpdateCollectionPluginV1CpiBuilder},
     types::{Attribute, Attributes, FreezeDelegate, Plugin, PluginType, UpdateAuthority}
 };
 use crate::state::Config;
@@ -141,6 +141,54 @@ impl<'info> Unstake<'info> {
             .plugin(Plugin::FreezeDelegate(FreezeDelegate { frozen: false }))
             .invoke_signed(&[signer_seeds])?;
         
+        Ok(())
+    }
+    pub fn update_collection_stats(&mut self, bumps: &UnstakeBumps) -> Result<()> {
+
+        // Signer seeds for the update authority
+        let collection_key = self.collection.key();
+        let signer_seeds = &[
+            b"update_authority",
+            collection_key.as_ref(),
+            &[bumps.update_authority],
+        ];
+
+        // Check if the Attributes plugin exists in collection - return error if not
+        match fetch_plugin::<BaseCollectionV1, Attributes>(&self.collection.to_account_info(), PluginType::Attributes) {
+            Err(_) => {
+                return Err(StakingError::InvalidCollectionStats.into());
+            }
+            Ok((_, fetched_attribute_list, _)) => {
+                let mut attribute_list: Vec<Attribute> = Vec::new();
+                
+                for attribute in fetched_attribute_list.attribute_list {
+                    if attribute.key == "total_staked" {
+                        let staked_count = attribute.value
+                            .parse::<u32>()
+                            .map_err(|_| StakingError::InvalidCollectionStats)?;
+                        let total_staked = staked_count
+                            .checked_sub(1)
+                            .ok_or(StakingError::Underflow)?;
+                        attribute_list.push(Attribute { 
+                            key: "total_staked".to_string(), 
+                            value: total_staked.to_string() 
+                        });
+                    } else {
+                        attribute_list.push(attribute);
+                    }
+                }
+            
+                // Update the Attributes plugin with the new total_staked
+                UpdateCollectionPluginV1CpiBuilder::new(&self.mpl_core_program.to_account_info())
+                    .collection(&self.collection.to_account_info())
+                    .payer(&self.user.to_account_info())
+                    .authority(Some(&self.update_authority.to_account_info()))
+                    .system_program(&self.system_program.to_account_info())
+                    .plugin(Plugin::Attributes(Attributes { attribute_list }))
+                    .invoke_signed(&[signer_seeds])?;
+            }
+        }
+
         Ok(())
     }
 }

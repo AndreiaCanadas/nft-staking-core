@@ -24,11 +24,13 @@ pub mod nft_staking_core {
     }
 
     pub fn stake(ctx: Context<Stake>) -> Result<()> {
-        ctx.accounts.stake(&ctx.bumps)
+        ctx.accounts.stake(&ctx.bumps)?;
+        ctx.accounts.update_collection_stats(&ctx.bumps)
     }
 
     pub fn unstake(ctx: Context<Unstake>) -> Result<()> {
-        ctx.accounts.unstake(&ctx.bumps)
+        ctx.accounts.unstake(&ctx.bumps)?;
+        ctx.accounts.update_collection_stats(&ctx.bumps)
     }
 
     pub fn claim_rewards(ctx: Context<ClaimRewards>) -> Result<()> {
