@@ -2,6 +2,7 @@ use anchor_lang::prelude::*;
 use mpl_core::{
     ID as MPL_CORE_ID,
     instructions::CreateCollectionV2CpiBuilder,
+    types::{ ExternalCheckResult, ExternalPluginAdapterInitInfo, HookableLifecycleEvent, OracleInitInfo, ValidationResultsOffset},
 };
 
 #[derive(Accounts)]
@@ -40,6 +41,38 @@ impl<'info> CreateCollection<'info> {
             .system_program(&self.system_program.to_account_info())
             .name(name)
             .uri(uri)
+            .invoke_signed(&[signer_seeds])?;
+
+        Ok(())
+    }
+    pub fn create_collection_with_oracle(&mut self, name: String, uri: String, oracle: Pubkey, bumps: &CreateCollectionBumps) -> Result<()> {
+
+        // Signer seeds for the update authority
+        let collection_key = self.collection.key();
+        let signer_seeds = &[
+            b"update_authority",
+            collection_key.as_ref(),
+            &[bumps.update_authority],
+        ];
+
+        // Create the collection with CPI builder
+        CreateCollectionV2CpiBuilder::new(&self.mpl_core_program.to_account_info())
+            .collection(&self.collection.to_account_info())
+            .payer(&self.payer.to_account_info())
+            .update_authority(Some(&self.update_authority.to_account_info()))
+            .system_program(&self.system_program.to_account_info())
+            .name(name)
+            .uri(uri)
+            .external_plugin_adapters(vec![ExternalPluginAdapterInitInfo::Oracle(OracleInitInfo { 
+                base_address: oracle, 
+                init_plugin_authority: None, 
+                lifecycle_checks: vec![(
+                    HookableLifecycleEvent::Transfer,
+                    ExternalCheckResult { flags: 4 },   // Can REJECT
+                )], 
+                base_address_config: None, 
+                results_offset: Some(ValidationResultsOffset::Anchor)
+            })])
             .invoke_signed(&[signer_seeds])?;
 
         Ok(())

@@ -7,6 +7,7 @@ pub mod claim_rewards;
 pub mod burn_staked_nft;
 pub mod init_oracle;
 pub mod update_oracle;
+pub mod transfer_nft;
 
 pub use create_collection::*;
 pub use mint_nft::*;
@@ -17,3 +18,4 @@ pub use claim_rewards::*;
 pub use burn_staked_nft::*;
 pub use init_oracle::*;
 pub use update_oracle::*;
+pub use transfer_nft::*;

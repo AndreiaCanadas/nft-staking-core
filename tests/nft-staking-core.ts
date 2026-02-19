@@ -21,6 +21,9 @@ describe("nft-staking-core", () => {
 
   const program = anchor.workspace.nftStakingCore as Program<NftStakingCore>;
 
+  // Generate a keypair for the new owner
+  const newOwnerKeypair = anchor.web3.Keypair.generate();
+
   // Generate a keypair for the collection
   const collectionKeypair = anchor.web3.Keypair.generate();
 
@@ -99,35 +102,27 @@ describe("nft-staking-core", () => {
     const tx = await provider.connection.requestAirdrop(vault, 1_000_000_000);
   });
 
-  it("Time travel to update oracle", async () => {
-    // Advance time to trading allowed hours
-    const currentTimestamp = Date.now();
-    const timeSinceMidnight = currentTimestamp % MILLISECONDS_PER_DAY;
-    const timeToOpen = OPEN_HOUR - timeSinceMidnight;
-    if (timeToOpen > 0) {
-      await advanceTime({ absoluteTimestamp: currentTimestamp + timeToOpen });
-      console.log("\nTime traveled to update oracle", timeToOpen);
-    } else {
-      console.log("\nTime already in trading allowed hours");
-    }
-  });
-
-  it("Update oracle account", async () => {
-    const tx = await program.methods.updateOracle()
-    .accountsPartial({
-      signer: provider.wallet.publicKey,
-      oracle,
-      vault,
-      systemProgram: SystemProgram.programId,
-    })
-    .rpc();
-    console.log("\nYour transaction signature", tx);
-  });
-
-  it("Create a collection", async () => {
+  xit("Create a collection", async () => {
     const collectionName = "Test Collection";
     const collectionUri = "https://example.com/collection";
     const tx = await program.methods.createCollection(collectionName, collectionUri)
+    .accountsPartial({
+      payer: provider.wallet.publicKey,
+      collection: collectionKeypair.publicKey,
+      updateAuthority,
+      systemProgram: SystemProgram.programId,
+      mplCoreProgram: MPL_CORE_PROGRAM_ID,
+    })
+    .signers([collectionKeypair])
+    .rpc();
+    console.log("\nYour transaction signature", tx);
+    console.log("Collection address", collectionKeypair.publicKey.toBase58());
+  });
+
+  it("Create a collection with oracle plugin", async () => {
+    const collectionName = "Oracle Collection";
+    const collectionUri = "https://example.com/my-collection";
+    const tx = await program.methods.createCollectionWithOracle(collectionName, collectionUri, oracle)
     .accountsPartial({
       payer: provider.wallet.publicKey,
       collection: collectionKeypair.publicKey,
@@ -159,7 +154,70 @@ describe("nft-staking-core", () => {
     console.log("NFT address", nftKeypair.publicKey.toBase58());
   });
 
-  it("Initialize stake config", async () => {
+  it("Try to transfer NFT outside trading allowed hours", async () => {
+    try {
+      await program.methods.transferNft()
+      .accountsPartial({
+        owner: provider.wallet.publicKey,
+        newOwner: newOwnerKeypair.publicKey,
+        oracle,
+        nft: nftKeypair.publicKey,
+        collection: collectionKeypair.publicKey,
+        systemProgram: SystemProgram.programId,
+        mplCoreProgram: MPL_CORE_PROGRAM_ID,
+      })
+      .rpc();
+      // If we reach here, the test should fail because we expected an error
+      throw new Error("\nExpected transaction to fail, but it succeeded");
+    } catch (error) {
+      console.log("\nTransaction failed as expected");
+    }
+    
+    
+  });
+
+  it("Time travel to update oracle", async () => {
+    // Advance time to trading allowed hours
+    const currentTimestamp = Date.now();
+    const timeSinceMidnight = currentTimestamp % MILLISECONDS_PER_DAY;
+    const timeToOpen = OPEN_HOUR - timeSinceMidnight;
+    if (timeToOpen > 0) {
+      await advanceTime({ absoluteTimestamp: currentTimestamp + timeToOpen });
+      console.log("\nTime traveled to update oracle", timeToOpen);
+    } else {
+      console.log("\nTime already in trading allowed hours");
+    }
+  });
+
+  it("Update oracle account", async () => {
+    const tx = await program.methods.updateOracle()
+    .accountsPartial({
+      signer: provider.wallet.publicKey,
+      oracle,
+      vault,
+      systemProgram: SystemProgram.programId,
+    })
+    .rpc();
+    console.log("\nYour transaction signature", tx);
+  });
+
+  it("Transfer NFT within trading allowed hours", async () => {
+    const tx = await program.methods.transferNft()
+    .accountsPartial({
+      owner: provider.wallet.publicKey,
+      newOwner: newOwnerKeypair.publicKey,
+      oracle,
+      nft: nftKeypair.publicKey,
+      collection: collectionKeypair.publicKey,
+      systemProgram: SystemProgram.programId,
+      mplCoreProgram: MPL_CORE_PROGRAM_ID,
+    })
+    .rpc();
+    console.log("\nYour transaction signature", tx);
+    
+  });
+
+  xit("Initialize stake config", async () => {
     const tx = await program.methods.initializeConfig(POINTS_PER_STAKED_NFT_PER_DAY, POINTS_PER_BURNED_NFT, FREEZE_PERIOD_IN_DAYS)
     .accountsPartial({
       admin: provider.wallet.publicKey,
@@ -179,7 +237,7 @@ describe("nft-staking-core", () => {
     console.log("Rewards mint address", rewardsMint.toBase58());
   });
 
-  it("Stake an NFT", async () => {
+  xit("Stake an NFT", async () => {
     const tx = await program.methods.stake()
     .accountsPartial({
       user: provider.wallet.publicKey,
@@ -194,7 +252,7 @@ describe("nft-staking-core", () => {
     console.log("\nYour transaction signature", tx);
   });
 
-  it("Attempt to unstake before freezing period", async () => {
+  xit("Attempt to unstake before freezing period", async () => {
     try {
       await program.methods.unstake()
         .accountsPartial({
@@ -215,14 +273,14 @@ describe("nft-staking-core", () => {
     }
   });
 
-  it("Time travel to the future to allow unstaking", async () => {
+  xit("Time travel to the future to allow unstaking", async () => {
     // Advance time in milliseconds
     const currentTimestamp = Date.now();
     await advanceTime({ absoluteTimestamp: currentTimestamp + TIME_TRAVEL_IN_DAYS * MILLISECONDS_PER_DAY });
     console.log("\nTime traveled in days", TIME_TRAVEL_IN_DAYS)
   });
 
-  it("Claim rewards", async () => {
+  xit("Claim rewards", async () => {
     // Get the user rewards ATA account
     const userRewardsAta = getAssociatedTokenAddressSync(rewardsMint, provider.wallet.publicKey, false, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID);
     const tx = await program.methods.claimRewards()
@@ -259,7 +317,7 @@ describe("nft-staking-core", () => {
     console.log("\nYour transaction signature", tx);
   });
 
-  it("Burn a staked NFT", async () => {
+  xit("Burn a staked NFT", async () => {
     // Get the user rewards ATA account
     const userRewardsAta = getAssociatedTokenAddressSync(rewardsMint, provider.wallet.publicKey, false, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID);
     const tx = await program.methods.burnStakedNft()

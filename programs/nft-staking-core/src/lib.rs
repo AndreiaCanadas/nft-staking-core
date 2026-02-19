@@ -16,8 +16,16 @@ pub mod nft_staking_core {
         ctx.accounts.create_collection(name, uri, &ctx.bumps)
     }
 
+    pub fn create_collection_with_oracle(ctx: Context<CreateCollection>, name: String, uri: String, oracle: Pubkey) -> Result<()> {
+        ctx.accounts.create_collection_with_oracle(name, uri, oracle, &ctx.bumps)
+    }
+
     pub fn mint_nft(ctx: Context<Mint>, name: String, uri: String) -> Result<()> {
         ctx.accounts.mint_nft(name, uri, &ctx.bumps)
+    }
+
+    pub fn transfer_nft(ctx: Context<TransferNft>) -> Result<()> {
+        ctx.accounts.transfer_nft()
     }
 
     pub fn initialize_config(ctx: Context<InitConfig>, points_per_stake: u32, points_per_burn: u32, freeze_period: u8) -> Result<()> {
