@@ -5,7 +5,7 @@ You are free to modify existing methods, state accounts, or logic.
 
 ---
 
-## Task 1: Core Plugins (Mandatory)
+## Task 1: Core Plugins
 
 ### 1. Claim Rewards Without Unstaking
 Create a `claim_rewards` instruction that lets users collect accumulated rewards without unstaking their NFT.
@@ -20,8 +20,8 @@ Create a `claim_rewards` instruction that lets users collect accumulated rewards
 Create a `burn_staked_nft` instruction that lets users permanently burn their staked NFT for a massive one-time reward bonus.
 
 **Requirements:**
-- Award a large bonus (e.g., 10x the normal accumulated reward) for destroying the NFT
-- Must handle the plugin lifecycle correctly
+- Mint reward tokens to the user's ATA
+- Burn the NFT
 
 
 ### 3. Collection-Level Staking Stats (Attributes on Collection)
@@ -34,31 +34,23 @@ Track staking statistics at the collection level using Attributes on the Collect
 
 ---
 
-## Task 2: Oracle Plugin (Optional)
+## Task 2: Oracle Plugin
 
-Implement one or both options of external plugin examples.
+Implement an external plugin (Oracle).
 
-### Option A: Whitelist-Based Staking
+### Time-Based Transfer
 
-Only specific NFT owners can stake their NFTs. An admin maintains a whitelist of approved addresses.
-
-**Requirements:**
-- Create an Oracle account that stores a list of whitelisted addresses
-- Add the Oracle Plugin adapter to your Collection
-- Admin can add/remove addresses from the whitelist
-- When staking, check if the user is whitelisted
-
-
-#### Option B: Time-Based Staking
-
-NFTs can only be staked during specific hours (e.g., 9AM-5PM UTC). Outside these hours, staking is blocked.
+NFTs can only be transferred during specific hours (e.g., 9AM-5PM UTC). Outside these hours, transferring is blocked.
 
 **Requirements:**
-- Create an Oracle account that stores current staking status (allowed/blocked)
-- Add the Oracle Plugin adapter to your Collection
-- Write a cron that writes and updates to your Oracle Plugin to toggle staking on/off
+- Create an Oracle Account to store the validation state (Approved/Rejected/Pass) per lifecycle event
+- Create a method that reads the current on-chain time and updates the Transfer validation state accordingly
+- Make the update instruction permissionless and reward the caller for cranking it at the right time
+- Add the Oracle Plugin adapter to your Collection (on creation or later)
+- Create a method in your program to transfer the NFT
 
-**Resources:**
-- [Oracle Plugin Documentation](https://developers.metaplex.com/smart-contracts/core/external-plugins/oracle)
-
-
+**Tips:**
+- The Oracle account should be a static address (PDA)
+- The Oracle plugin should be set to check the lifecycle `Transfer` only and give it `REJECT` capability
+- For the crank reward, store lamports in a vault PDA and only pay out when the update is called close to the open/close boundary
+- The Oracle account should be added as a remaining account on the transfer CPI
