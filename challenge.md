@@ -36,29 +36,14 @@ Track staking statistics at the collection level using Attributes on the Collect
 
 ## Task 2: Oracle Plugin (Optional)
 
-Implement one or both options of external plugin examples.
+Implement an external plugin.
 
-### Option A: Whitelist-Based Staking
+### Time-Based Trading
 
-Only specific NFT owners can stake their NFTs. An admin maintains a whitelist of approved addresses.
-
-**Requirements:**
-- Create an Oracle account that stores a list of whitelisted addresses
-- Add the Oracle Plugin adapter to your Collection
-- Admin can add/remove addresses from the whitelist
-- When staking, check if the user is whitelisted
-
-
-#### Option B: Time-Based Staking
-
-NFTs can only be staked during specific hours (e.g., 9AM-5PM UTC). Outside these hours, staking is blocked.
+NFTs can only be traded during specific hours (e.g., 9AM-5PM UTC). Outside these hours, trading is blocked.
 
 **Requirements:**
-- Create an Oracle account that stores current staking status (allowed/blocked)
-- Add the Oracle Plugin adapter to your Collection
-- Write a cron that writes and updates to your Oracle Plugin to toggle staking on/off
-
-**Resources:**
-- [Oracle Plugin Documentation](https://developers.metaplex.com/smart-contracts/core/external-plugins/oracle)
-
+- Create an Oracle Account to save the Approved/Rejected per lifecycle event
+- Add the Oracle Plugin adapter to your Collection (on creation or later)
+- Write a cron that updates your Oracle account to toggle transfer Approved/Rejected
 

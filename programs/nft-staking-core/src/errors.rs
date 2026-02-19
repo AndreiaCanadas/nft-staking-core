@@ -22,4 +22,6 @@ pub enum StakingError {
     Overflow,
     #[msg("Invalid collection stats")]
     InvalidCollectionStats,
+    #[msg("Oracle already updated")]
+    AlreadyUpdated,
 }

@@ -7,10 +7,12 @@ import { ASSOCIATED_TOKEN_PROGRAM_ID, getAssociatedTokenAddressSync, TOKEN_PROGR
 import { assert } from "chai";
 
 const MILLISECONDS_PER_DAY = 86400000;
+const MILLISECONDS_PER_HOUR = 3600000;
 const POINTS_PER_STAKED_NFT_PER_DAY = 10_000_000;
 const POINTS_PER_BURNED_NFT = 1_000_000_000;
 const FREEZE_PERIOD_IN_DAYS = 7;
 const TIME_TRAVEL_IN_DAYS = 8;
+const OPEN_HOUR = 9 * MILLISECONDS_PER_HOUR;
 
 describe("nft-staking-core", () => {
   // Configure the client to use the local cluster.
@@ -42,6 +44,85 @@ describe("nft-staking-core", () => {
     [Buffer.from("rewards"), config.toBuffer()],
     program.programId
   )[0];
+
+  // Find the oracle account (PDA)
+  const oracle = anchor.web3.PublicKey.findProgramAddressSync(
+    [Buffer.from("oracle")],
+    program.programId
+  )[0];
+
+  // Find the rewardsvault account (PDA)
+  const vault = anchor.web3.PublicKey.findProgramAddressSync(
+    [Buffer.from("vault"), oracle.toBuffer()],
+    program.programId
+  )[0];
+
+  /**
+   * Helper function to advance time with surfnet_timeTravel RPC method
+   * @param params - Time travel params (absoluteEpoch, absoluteSlot, or absoluteTimestamp)
+   */
+  async function advanceTime(params: { absoluteEpoch?: number; absoluteSlot?: number; absoluteTimestamp?: number }): Promise<void> {
+    const rpcResponse = await fetch(provider.connection.rpcEndpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "surfnet_timeTravel",
+        params: [params],
+      }),
+    });
+
+    const result = await rpcResponse.json() as { error?: any; result?: any };
+    if (result.error) {
+      throw new Error(`Time travel failed: ${JSON.stringify(result.error)}`);
+    }
+    
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+  }
+
+  it("Initialize oracle account", async () => {
+    const tx = await program.methods.initOracle()
+    .accountsPartial({
+      user: provider.wallet.publicKey,
+      oracle,
+      vault,
+      systemProgram: SystemProgram.programId,
+    })
+    .rpc();
+    console.log("\nYour transaction signature", tx);
+    console.log("Oracle address", oracle.toBase58());
+    console.log("Vault address", vault.toBase58());
+  });
+
+  it("Fund the vault account", async () => {
+    const tx = await provider.connection.requestAirdrop(vault, 1_000_000_000);
+  });
+
+  it("Time travel to update oracle", async () => {
+    // Advance time to trading allowed hours
+    const currentTimestamp = Date.now();
+    const timeSinceMidnight = currentTimestamp % MILLISECONDS_PER_DAY;
+    const timeToOpen = OPEN_HOUR - timeSinceMidnight;
+    if (timeToOpen > 0) {
+      await advanceTime({ absoluteTimestamp: currentTimestamp + timeToOpen });
+      console.log("\nTime traveled to update oracle", timeToOpen);
+    } else {
+      console.log("\nTime already in trading allowed hours");
+    }
+  });
+
+  it("Update oracle account", async () => {
+    const tx = await program.methods.updateOracle()
+    .accountsPartial({
+      signer: provider.wallet.publicKey,
+      oracle,
+      vault,
+      systemProgram: SystemProgram.programId,
+    })
+    .rpc();
+    console.log("\nYour transaction signature", tx);
+  });
 
   it("Create a collection", async () => {
     const collectionName = "Test Collection";
@@ -113,30 +194,6 @@ describe("nft-staking-core", () => {
     console.log("\nYour transaction signature", tx);
   });
 
-  /**
-   * Helper function to advance time with surfnet_timeTravel RPC method
-   * @param params - Time travel params (absoluteEpoch, absoluteSlot, or absoluteTimestamp)
-   */
-  async function advanceTime(params: { absoluteEpoch?: number; absoluteSlot?: number; absoluteTimestamp?: number }): Promise<void> {
-    const rpcResponse = await fetch(provider.connection.rpcEndpoint, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        jsonrpc: "2.0",
-        id: 1,
-        method: "surfnet_timeTravel",
-        params: [params],
-      }),
-    });
-
-    const result = await rpcResponse.json() as { error?: any; result?: any };
-    if (result.error) {
-      throw new Error(`Time travel failed: ${JSON.stringify(result.error)}`);
-    }
-    
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-  }
-
   it("Attempt to unstake before freezing period", async () => {
     try {
       await program.methods.unstake()
@@ -158,7 +215,7 @@ describe("nft-staking-core", () => {
     }
   });
 
-  it("Time travel to the future", async () => {
+  it("Time travel to the future to allow unstaking", async () => {
     // Advance time in milliseconds
     const currentTimestamp = Date.now();
     await advanceTime({ absoluteTimestamp: currentTimestamp + TIME_TRAVEL_IN_DAYS * MILLISECONDS_PER_DAY });
