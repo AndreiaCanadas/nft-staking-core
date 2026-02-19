@@ -5,7 +5,7 @@ You are free to modify existing methods, state accounts, or logic.
 
 ---
 
-## Task 1: Core Plugins (Mandatory)
+## Task 1: Core Plugins
 
 ### 1. Claim Rewards Without Unstaking
 Create a `claim_rewards` instruction that lets users collect accumulated rewards without unstaking their NFT.
@@ -34,16 +34,23 @@ Track staking statistics at the collection level using Attributes on the Collect
 
 ---
 
-## Task 2: Oracle Plugin (Optional)
+## Task 2: Oracle Plugin
 
-Implement an external plugin.
+Implement an external plugin (Oracle).
 
-### Time-Based Trading
+### Time-Based Transfer
 
-NFTs can only be traded during specific hours (e.g., 9AM-5PM UTC). Outside these hours, trading is blocked.
+NFTs can only be transferred during specific hours (e.g., 9AM-5PM UTC). Outside these hours, transferring is blocked.
 
 **Requirements:**
-- Create an Oracle Account to save the Approved/Rejected per lifecycle event
+- Create an Oracle Account to store the validation state (Approved/Rejected/Pass) per lifecycle event
+- Create a method that reads the current on-chain time and updates the Transfer validation state accordingly
+- Make the update instruction permissionless and reward the caller for cranking it at the right time
 - Add the Oracle Plugin adapter to your Collection (on creation or later)
-- Write a cron that updates your Oracle account to toggle transfer Approved/Rejected
+- Create a method in your program to transfer the NFT
 
+**Tips:**
+- The Oracle account should be a static address (PDA)
+- The Oracle plugin should be set to check the lifecycle `Transfer` only and give it `REJECT` capability
+- For the crank reward, store lamports in a vault PDA and only pay out when the update is called close to the open/close boundary
+- The Oracle account should be added as a remaining account on the transfer CPI
