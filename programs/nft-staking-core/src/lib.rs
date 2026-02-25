@@ -17,7 +17,7 @@ pub mod nft_staking_core {
     }
 
     pub fn create_collection_with_oracle(ctx: Context<CreateCollection>, name: String, uri: String, oracle: Pubkey) -> Result<()> {
-        ctx.accounts.create_collection_with_oracle(name, uri, oracle, &ctx.bumps)
+        ctx.accounts.create_collection_with_oracle(name, uri, &ctx.bumps)
     }
 
     pub fn mint_nft(ctx: Context<Mint>, name: String, uri: String) -> Result<()> {

@@ -1,4 +1,6 @@
 use anchor_lang::prelude::*;
+use crate::state::Oracle;
+use crate::errors::StakingError;
 use mpl_core::{
     ID as MPL_CORE_ID,
     instructions::CreateCollectionV2CpiBuilder,
@@ -11,6 +13,11 @@ pub struct CreateCollection<'info> {
     pub payer: Signer<'info>,
     #[account(mut)]
     pub collection: Signer<'info>,
+    #[account(
+        seeds = [b"oracle"],
+        bump = oracle.bump,
+    )]
+    pub oracle: Option<Account<'info, Oracle>>,
     /// CHECK: PDA Update authority
     #[account(
         seeds = [b"update_authority", collection.key().as_ref()],
@@ -45,7 +52,10 @@ impl<'info> CreateCollection<'info> {
 
         Ok(())
     }
-    pub fn create_collection_with_oracle(&mut self, name: String, uri: String, oracle: Pubkey, bumps: &CreateCollectionBumps) -> Result<()> {
+    pub fn create_collection_with_oracle(&mut self, name: String, uri: String, bumps: &CreateCollectionBumps) -> Result<()> {
+
+        require!(self.oracle.is_some(), StakingError::OracleNotFound);
+        let oracle = self.oracle.as_ref().unwrap().key();
 
         // Signer seeds for the update authority
         let collection_key = self.collection.key();

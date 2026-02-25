@@ -24,4 +24,6 @@ pub enum StakingError {
     InvalidCollectionStats,
     #[msg("Oracle already updated")]
     AlreadyUpdated,
+    #[msg("Oracle Account not found")]
+    OracleNotFound,
 }
