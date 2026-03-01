@@ -57,7 +57,6 @@ pub struct Unstake<'info> {
 impl<'info> Unstake<'info> {
     pub fn unstake(&mut self, bumps: &UnstakeBumps) -> Result<()> {
         
-        // TBD: Perform this validations in account constraints (currently BaseAssetV1 and BaseCollectionV1 are given errors)
         // Verify NFT owner and update authority
         let base_asset = BaseAssetV1::try_from(&self.nft.to_account_info())?;
         require!(base_asset.owner == self.user.key(), StakingError::InvalidOwner);

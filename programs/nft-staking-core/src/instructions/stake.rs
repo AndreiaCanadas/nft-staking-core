@@ -9,9 +9,6 @@ use mpl_core::{
 use crate::state::Config;
 use crate::errors::StakingError;
 
-// TBD: Verify authority, update authority and signer / signer_seeds through the whole program (collection, mint, stake).
-// TBD: Also, confirm init_authority plugin and what does that do
-
 #[derive(Accounts)]
 pub struct Stake<'info> {
     #[account(mut)]
@@ -41,7 +38,6 @@ pub struct Stake<'info> {
 impl<'info> Stake<'info> {
     pub fn stake(&mut self, bumps: &StakeBumps) -> Result<()> {
         
-        // TBD: Perform this validations in account constraints (currently BaseAssetV1 and BaseCollectionV1 are given errors)
         // Verify NFT owner and update authority
         let base_asset = BaseAssetV1::try_from(&self.nft.to_account_info())?;
         require!(base_asset.owner == self.user.key(), StakingError::InvalidOwner);
@@ -111,7 +107,6 @@ impl<'info> Stake<'info> {
                     }
                 }
                 // Add the 'staked' and 'staked_at' attributes if they don't exist
-                // TBD: Check this logic after unstaking to ensure it makes sense!!
                 if !staked {
                     attribute_list.push(Attribute { 
                         key: "staked".to_string(), 
